@@ -206,7 +206,7 @@ def get_monthly_summary(purchases: list, month_str: str) -> dict:
         "total_co2": total_co2,
     }
 
-def evaluate_badges(monthly_co2: float, month_items: list) -> list:
+def evaluate_badges(monthly_co2: float, month_items: list, co2_goal: float = 20.0) -> list:
     badges = []
     if len(month_items) >= 1 and monthly_co2 <= 12.0:
         badges.append("🌱 Eco Saver (CO₂ ≤ 12 kg)")
@@ -218,6 +218,8 @@ def evaluate_badges(monthly_co2: float, month_items: list) -> list:
     ]
     if len(eco_swaps) >= 2:
         badges.append("♻️ Green Swap Champion (2+ Eco Picks)")
+    if len(month_items) >= 4 and monthly_co2 <= co2_goal and len(eco_swaps) >= 1:
+        badges.append(f"🏆 Eco Saver of the Month (≤ {co2_goal:.0f} kg CO₂)")
     return badges
 
 # ----------------------------------------------------
@@ -362,6 +364,10 @@ with st.sidebar:
     high_contrast = st.toggle("High-Contrast / Dark Mode", value=False)
     apply_theme(high_contrast)
 
+    st.markdown("### 🎯 Monthly Targets")
+    co2_goal = st.slider("Monthly CO₂ Goal (kg)", min_value=5.0, max_value=60.0, value=20.0, step=1.0)
+    spend_goal = st.slider("Monthly Spend Goal (₹)", min_value=500, max_value=20000, value=5000, step=250)
+
     st.divider()
     st.markdown("### ⚡ Quick Actions")
     if st.button("Load Sample Purchases", use_container_width=True):
@@ -370,11 +376,17 @@ with st.sidebar:
             ("Thrift & Second-Hand Finds", "Local Thrift", 450, now),
             ("Daily Essentials & Bags", "EcoCarry", 350, now),
             ("T-Shirts & Tops", "BasicWear", 850, now),
+            ("Thrift & Second-Hand Finds", "Campus Swap", 300, now),
         ]
         for prod, br, pr, dt in samples:
             add_purchase(st.session_state.purchases, prod, br, pr, dt)
         st.session_state.current_tip = random.choice(ECO_TIPS)
         st.rerun()
+
+    if st.button("Undo Last Purchase", use_container_width=True):
+        if st.session_state.purchases:
+            st.session_state.purchases.pop()
+            st.rerun()
 
     if st.button("New Eco Tip", use_container_width=True):
         st.session_state.current_tip = random.choice(ECO_TIPS)
@@ -452,7 +464,7 @@ if st.session_state.purchases:
     active_month = st.selectbox("📅 Monthly View", available_months, index=0)
 
 summary = get_monthly_summary(st.session_state.purchases, active_month)
-badges = evaluate_badges(summary["total_co2"], summary["items"])
+badges = evaluate_badges(summary["total_co2"], summary["items"], co2_goal=co2_goal)
 
 dash_col, side_col = st.columns([2.1, 1.0], gap="large")
 
@@ -476,6 +488,13 @@ with dash_col:
                 f'<div class="kpi-box"><div class="kpi-label">Estimated CO₂</div><div class="kpi-value">{summary["total_co2"]} kg</div></div>',
                 unsafe_allow_html=True,
             )
+
+        st.write("")
+        co2_progress = min(summary["total_co2"] / co2_goal, 1.0) if co2_goal > 0 else 0.0
+        spend_progress = min(summary["total_spend"] / spend_goal, 1.0) if spend_goal > 0 else 0.0
+        st.caption(f"CO₂ Goal Progress: **{summary['total_co2']} / {co2_goal:.0f} kg**")
+        st.progress(co2_progress)
+        st.caption(f"Spend Goal Progress: **₹{summary['total_spend']:,.0f} / ₹{spend_goal:,.0f}**")
 
         st.write("")
         if summary["items"]:
@@ -506,9 +525,9 @@ with side_col:
 
         if not summary["items"]:
             turtle_state = "leaf"
-        elif len(badges) >= 2:
+        elif any("Eco Saver of the Month" in b for b in badges) or len(badges) >= 2:
             turtle_state = "badge"
-        elif summary["total_co2"] <= 20.0:
+        elif summary["total_co2"] <= co2_goal:
             turtle_state = "leaf"
         else:
             turtle_state = "footprint"
