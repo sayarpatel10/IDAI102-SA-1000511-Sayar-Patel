@@ -11,10 +11,11 @@ A friendly conscious-shopping dashboard built with Python and Streamlit.
 - Turtle-inspired illustration in the Streamlit interface.
 - A separate `turtle_graphics.py` file that uses Python's actual `turtle` library to draw a turtle and leaf.
 
-## Run the Streamlit app locally
+## Run the Streamlit app locally/ Live Link
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
+Live Link: https://ndtjzgpnx2vpfmg2hqykhu.streamlit.app/
 ```
 
 ## Run the actual Python Turtle drawing
